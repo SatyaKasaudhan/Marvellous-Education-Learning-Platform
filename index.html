@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marvellous Education Learning Platform — Upgraded</title>
+
+  <!-- Security: allow only our site + Google Drive/Docs in iframes -->
+  <meta http-equiv="Content-Security-Policy"
+    content="frame-ancestors 'self' https://drive.google.com https://docs.google.com https://accounts.google.com">
+
+  <!-- PDF.js (kept if you later want native renderer) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+
+  <style>
+    :root {
+      --primary-red: #b30000;
+      --dark-red: #8b0000;
+      --light-red: #ff4d4d;
+      --black: #1a1a1a;
+      --dark-gray: #333333;
+      --light-gray: #f5f5f5;
+      --white: #ffffff;
+      --text-light: #f0f0f0;
+      --text-dark: #333333;
+      --gradient: linear-gradient(135deg, var(--primary-red) 0%, var(--black) 100%);
+      --gradient-light: linear-gradient(135deg, var(--light-red) 0%, var(--dark-gray) 100%);
+      --sidebar-width: 280px;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: var(--black);
+      --text-color: var(--text-light);
+      --header-bg: var(--dark-gray);
+      --sidebar-bg: var(--dark-gray);
+      --border-color: #444;
+      --accent-color: var(--light-red);
+      --card-bg: #2d2d2d;
+    }
+
+    [data-theme="light"] {
+      --bg-color: var(--white);
+      --text-color: var(--text-dark);
+      --header-bg: var(--light-gray);
+      --sidebar-bg: var(--light-gray);
+      --border-color: #ddd;
+      --accent-color: var(--primary-red);
+      --card-bg: #f9f9f9;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    /* Print lock */
+    @media print {
+
+      html,
+      body {
+        display: none !important
+      }
+    }
+
+    /* Protection shimmer */
+    .protection-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      pointer-events: none;
+      user-select: none;
+      animation: protect-screen 1s steps(2) infinite;
+      background: linear-gradient(45deg, transparent 0%, transparent 100%);
+      mix-blend-mode: difference;
+    }
+
+    @keyframes protect-screen {
+
+      0%,
+      100% {
+        opacity: .02
+      }
+
+      50% {
+        opacity: .03
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background .3s, color .3s;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh
+    }
+
+    /* Header */
+    header {
+      background: var(--gradient);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+      z-index: 100;
+      min-height: 70px;
+      position: relative;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .75rem
+    }
+
+    .logo-icon {
+      font-size: 1.8rem;
+      color: var(--white)
+    }
+
+    .logo-text {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--white)
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: .75rem
+    }
+
+    .theme-toggle {
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .28);
+      color: var(--white);
+      padding: .5rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      gap: .5rem
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: .5rem
+    }
+
+    /* NEW: Header Loading Bar (5px) placed BELOW header */
+    .header-loading-wrap {
+      height: 5px;
+      background: transparent
+    }
+
+    .header-loading-bar {
+      height: 5px;
+      width: 100%;
+      opacity: 0;
+      transform-origin: left;
+      background: linear-gradient(90deg, #29b6f6, #64b5f6, #29b6f6);
+      box-shadow: 0 0 8px rgba(41, 182, 246, .45);
+    }
+
+    .header-loading-bar.loading {
+      opacity: 1;
+      animation: loading-progress 1.6s infinite cubic-bezier(.4, 0, .2, 1)
+    }
+
+    @keyframes loading-progress {
+      0% {
+        transform: translateX(-100%)
+      }
+
+      50% {
+        transform: translateX(0)
+      }
+
+      100% {
+        transform: translateX(100%)
+      }
+    }
+
+    /* Main layout */
+    .main-content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative
+    }
+
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 10
+    }
+
+    .course-selector {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color)
+    }
+
+    .course-selector select {
+      width: 100%;
+      padding: .75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-color);
+      color: var(--text-color)
+    }
+
+    .semester-section {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem
+    }
+
+    .semester-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .5rem
+    }
+
+    .semester-item {
+      padding: .75rem 1rem;
+      border-radius: 10px;
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: .2s;
+      border-left: 4px solid transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center
+    }
+
+    .semester-item:hover {
+      background: var(--accent-color);
+      color: #fff;
+      transform: translateX(5px)
+    }
+
+    .semester-item.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-left: 4px solid #fff
+    }
+
+    /* Viewer region */
+    .content-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: #525659
+    }
+
+    .viewer-tabs {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      padding: .6rem .75rem;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(0, 0, 0, .06));
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: saturate(1.2) blur(8px)
+    }
+
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .55rem .9rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-color);
+      color: var(--text-color);
+      cursor: pointer;
+      font-weight: 600;
+      transition: .2s
+    }
+
+    .tab-btn.active {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .18)
+    }
+
+    .tab-btn span.icon {
+      font-size: 1.05rem
+    }
+
+    .pdf-container,
+    .audio-container,
+    .video-container {
+      flex: 1;
+      position: relative;
+      overflow: auto;
+      padding: .5rem;
+      display: flex;
+      justify-content: center;
+      background: #525659
+    }
+
+    .pdf-viewer,
+    .audio-viewer,
+    .video-viewer {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+      z-index: 1;
+      background: #2b2f33;
+      border-radius: 8px;
+      overflow: hidden
+    }
+
+    /* IMPORTANT: Enable interactions inside viewers (fixes scroll + zoom) */
+    iframe {
+      pointer-events: none;
+    }
+
+    /* keep global lock */
+    .pdf-viewer iframe,
+    .audio-viewer iframe,
+    .video-viewer iframe {
+      pointer-events: auto;
+    }
+
+    /* allow only our players */
+
+    /* Subtle protection overlay */
+    .protection-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      background: transparent
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      flex-direction: column;
+      gap: 1rem;
+      color: var(--text-color)
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 0, 0, .1);
+      border-left: 4px solid var(--accent-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* Mobile adjustments */
+    @media (max-width:1024px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        width: 300px;
+        max-width: 85vw;
+        transition: transform .3s;
+        background: var(--sidebar-bg);
+        z-index: 1001
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .5);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .3s
+      }
+
+      .overlay.active {
+        opacity: 1;
+        visibility: visible
+      }
+
+      .mobile-menu-btn {
+        display: block
+      }
+    }
+
+    @media (max-width:768px) {
+      header {
+        padding: .75rem;
+        min-height: 60px
+      }
+
+      .logo-text {
+        font-size: 1.1rem
+      }
+
+      .theme-toggle {
+        padding: .5rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px
+      }
+
+      .theme-toggle span:last-child {
+        display: none
+      }
+
+      .viewer-tabs {
+        gap: .35rem
+      }
+
+      .tab-btn {
+        padding: .5rem .75rem
+      }
+    }
+
+    /* Safe area insets */
+    @supports (padding: max(0px)) {
+      header {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right))
+      }
+
+      .pdf-container,
+      .audio-container,
+      .video-container {
+        padding-left: max(.5rem, env(safe-area-inset-left));
+        padding-right: max(.5rem, env(safe-area-inset-right));
+        padding-bottom: max(.5rem, env(safe-area-inset-bottom))
+      }
+    }
+  </style>
+</head>
+
+<body data-theme="light">
+  <!-- Global Protection Layer -->
+  <div class="protection-layer"></div>
+
+  <!-- Splash -->
+  <div id="splashScreen"
+    style="display:flex;align-items:center;justify-content:center;position:fixed;inset:0;background:var(--gradient);z-index:2000;color:#fff">
+    <div style="text-align:center;padding:20px">
+      <div style="font-size:3rem;margin-bottom:.5rem">📚</div>
+      <div style="font-size:1.25rem;font-weight:700;margin-bottom:.75rem">Marvellous Education</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+        <div class="spinner" style="width:36px;height:36px;border-width:3px;border-left-color:#fff"></div>
+        <div style="font-size:.95rem">Preparing content...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Page -->
+  <div class="login-page" id="loginPage"
+    style="position:fixed;inset:0;background:var(--gradient);display:flex;justify-content:center;align-items:center;z-index:2000;color:#fff">
+    <div class="login-container"
+      style="background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:15px;padding:2rem;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18)">
+      <div class="login-header" style="text-align:center;margin-bottom:1.5rem">
+        <h1 style="font-size:1.7rem;margin-bottom:.35rem">📚 Marvellous Education</h1>
+        <p style="opacity:.85">Student Learning Platform</p>
+      </div>
+      <form class="login-form" id="loginForm" style="display:flex;flex-direction:column;gap:1rem">
+        <div class="form-group" style="display:flex;flex-direction:column;gap:.5rem">
+          <label for="studentId">Student ID</label>
+          <input id="studentId" placeholder="Enter your student ID" required
+            style="padding:.9rem;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff">
+        </div>
+        <div class="form-group" style="display:flex;flex-direction:column;gap:.5rem">
+          <label for="studentPassword">Password</label>
+          <input type="password" id="studentPassword" placeholder="Enter your password" required
+            style="padding:.9rem;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff">
+        </div>
+        <button class="login-btn" type="submit"
+          style="padding:1rem;border-radius:10px;border:none;background:var(--light-red);color:#fff;font-size:1.05rem;font-weight:700;cursor:pointer">
+          Login
+        </button>
+        <div class="error-message" id="errorMessage"
+          style="color:#ffb3b3;text-align:center;font-size:.9rem;min-height:1.2rem"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div class="container" id="mainApp" style="display:none">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">📚</div>
+        <div class="logo-text">Marvellous Education Learning Platform</div>
+      </div>
+      <div class="header-controls">
+        <button class="theme-toggle" id="themeToggle"><span id="themeIcon">🌙</span><span id="themeText">Dark
+            Mode</span></button>
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <button class="theme-toggle" id="logoutBtn"><span>🚪</span><span>Logout</span></button>
+      </div>
+    </header>
+
+    <!-- NEW: Loading Bar lives OUTSIDE header (5px) -->
+    <div class="header-loading-wrap">
+      <div class="header-loading-bar" id="headerLoadingBar"></div>
+    </div>
+
+    <div class="main-content">
+      <div class="overlay" id="overlay"></div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="course-selector">
+          <select id="courseSelect">
+            <option value="">Select a Course</option>
+          </select>
+        </div>
+        <div class="semester-section">
+          <h3 style="margin-bottom:1rem;padding-left:.5rem">Semesters</h3>
+          <ul class="semester-list" id="semesterList"></ul>
+        </div>
+      </aside>
+
+      <!-- Viewer + Tabs -->
+      <section class="content-pane">
+        <!-- Tabs Above Viewer (Option 1, Design B) -->
+        <div class="viewer-tabs" id="viewerTabs">
+          <button class="tab-btn active" data-tab="pdf"><span class="icon">📄</span> PDF</button>
+          <button class="tab-btn" data-tab="audio"><span class="icon">🔊</span> Audio</button>
+          <button class="tab-btn" data-tab="video"><span class="icon">🎥</span> Video</button>
+        </div>
+
+        <!-- PDF -->
+        <div class="pdf-container" id="pdfContainer">
+          <div class="protection-overlay"></div>
+          <div id="pdfViewer" class="pdf-viewer">
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>Select a semester to view content</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio -->
+        <div class="audio-container" id="audioContainer" style="display:none">
+          <div class="protection-overlay"></div>
+          <div id="audioViewer" class="audio-viewer">
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>No audio added for this semester.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video -->
+        <div class="video-container" id="videoContainer" style="display:none">
+          <div class="protection-overlay"></div>
+          <div id="videoViewer" class="video-viewer">
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>No video added for this semester.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    /* ======= Anti-copy & protections (kept) ======= */
+    (function () {
+      // Quick devtools detection & basic locks
+      setInterval(() => {
+        try {
+          console.profile(); console.profileEnd();
+        } catch (e) { }
+      }, 100);
+      ['copy', 'cut', 'paste', 'contextmenu', 'selectstart', 'drag', 'dragstart'].forEach(evt => document.addEventListener(evt, e => e.preventDefault()));
+      document.addEventListener('keydown', e => {
+        if ((e.ctrlKey && ['p', 's', 'u', 'c', 'v'].includes(e.key.toLowerCase())) ||
+          (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) ||
+          e.key === 'F12') { e.preventDefault(); }
+      }, true);
+      if (window.self !== window.top) { window.top.location.href = window.self.location.href; }
+    })();
+
+    /* ======= Theme ======= */
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeText = document.getElementById('themeText');
+    const body = document.body;
+    const savedTheme = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (savedTheme === 'dark') { body.setAttribute('data-theme', 'dark'); themeIcon.textContent = '☀️'; themeText.textContent = 'Light Mode'; }
+    themeToggle.addEventListener('click', () => {
+      if (body.getAttribute('data-theme') === 'dark') { body.setAttribute('data-theme', 'light'); themeIcon.textContent = '🌙'; themeText.textContent = 'Dark Mode'; localStorage.setItem('theme', 'light'); }
+      else { body.setAttribute('data-theme', 'dark'); themeIcon.textContent = '☀️'; themeText.textContent = 'Light Mode'; localStorage.setItem('theme', 'dark'); }
+    });
+
+    /* ======= Sidebar mobile ======= */
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    mobileMenuBtn.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+    overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+
+    /* ======= Login (Google Sheet auth kept minimal) ======= */
+    const GOOGLE_SHEETS_API_KEY = "AIzaSyDdfCW-qLM1wgSziArnhdd8IaZJSUJZY_E";
+    const GOOGLE_SHEETS_ID = "1lGqTahxAxD9KOj_oZId0iRWX5W7nbMkD1_54OjL4BZw";
+    const STUDENT_DATA_RANGE = "Sheet1!A:C";
+
+    async function fetchStudentData() {
+      try {
+        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_ID}/values/${STUDENT_DATA_RANGE}?key=${GOOGLE_SHEETS_API_KEY}`);
+        if (!res.ok) throw new Error('SHEETS_ERROR');
+        const data = await res.json();
+        const out = {};
+        if (data.values && data.values.length > 1) {
+          for (let i = 1; i < data.values.length; i++) {
+            const row = data.values[i];
+            if (row.length >= 2) {
+              out[row[0]] = { password: row[1], courses: row[2] ? row[2].split(',').map(x => x.trim()) : [] };
+            }
+          }
+        }
+        return out;
+      } catch (e) {
+        return { "S001": { password: "password1", courses: ["adca", "dca"] }, "S002": { password: "password2", courses: ["cfa"] }, "S003": { password: "password3", courses: ["python", "html"] } };
+      }
+    }
+    function validateStudent(id, pw, db) { return db[id] && db[id].password === pw ? db[id] : null; }
+
+    const loginForm = document.getElementById('loginForm');
+    const loginPage = document.getElementById('loginPage');
+    const mainApp = document.getElementById('mainApp');
+    const errorMessage = document.getElementById('errorMessage');
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentId = document.getElementById('studentId').value.trim();
+      const password = document.getElementById('studentPassword').value;
+      if (!studentId || !password) { errorMessage.textContent = "Please enter both Student ID and Password"; return; }
+      const btn = loginForm.querySelector('.login-btn'); const txt = btn.textContent; btn.textContent = 'Authenticating...'; btn.disabled = true;
+      try {
+        const db = await fetchStudentData();
+        const info = validateStudent(studentId, password, db);
+        if (info) { localStorage.setItem('loggedInStudent', studentId); localStorage.setItem('studentCourses', JSON.stringify(info.courses)); loginPage.style.display = 'none'; mainApp.style.display = 'flex'; document.getElementById('splashScreen').style.display = 'none'; populateCourses(); alert(`Welcome, Student ${studentId}!`); }
+        else { errorMessage.textContent = "Invalid Student ID or Password"; }
+      } catch (err) { errorMessage.textContent = "Authentication error. Try again."; }
+      finally { btn.textContent = txt; btn.disabled = false; }
+    });
+    window.addEventListener('DOMContentLoaded', () => {
+      const logged = localStorage.getItem('loggedInStudent');
+      if (logged) { loginPage.style.display = 'none'; mainApp.style.display = 'flex'; document.getElementById('splashScreen').style.display = 'none'; populateCourses(); }
+    });
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm("Are you sure you want to logout?")) { localStorage.removeItem('loggedInStudent'); loginPage.style.display = 'flex'; mainApp.style.display = 'none'; document.getElementById('studentId').value = ''; document.getElementById('studentPassword').value = ''; errorMessage.textContent = ''; }
+    });
+
+    /* ======= Course/Semester data ======= */
+    const courseData = {}; // semesters only array
+    const courses = {
+      adca: {
+        name: "ADCA", semesters: [
+          { id: 1, name: "Semester 1 - Fundamental of Computer", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1API0ApAQKrAz_aP56rEtTXE4TOe8Xobq/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1Mmr_KZHSf_kF70iQGISVFOI6l2XcdTu_/view?usp=sharing" },
+          { id: 2, name: "Semester 2 - Operating System", pdfUrl: "https://drive.google.com/file/d/1pdX-qOewiQQfWKo-zt5XivZ8yMepBYMd/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1DG0CkOKWbjs39WX5u1_EaxdZdisgXgs6/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1p-S9Zo0bxjQrxOgiZimLjwsDJd4T2tIA/view?usp=sharing" },
+          { id: 3, name: "Semester 3 - Number System in Computer", pdfUrl: "https://drive.google.com/file/d/1Lm-mOrBRYNzgAlE8N5PZlLiBteYqVnkt/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1kA0-OEricwaAgVSLdbjrRb3snWEGP_cJ/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1yy2eAwJ_rJFhly-oOWpdo9lNDe7e2mrB/view?usp=sharing" },
+          { id: 4, name: "Semester 4 - Microsoft Word", pdfUrl: "https://drive.google.com/file/d/1RMfdnGJAJpsuubtxq07WzBxeV7tcvJcX/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1H77yI1Z4lvTR2tMMK0A5VFZM8AKJmuc9/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1DWrvHkWm0Vyym0cI2j50p9KKVjc_TsVL/view?usp=sharing" },
+          { id: 5, name: "Semester 5 - Microsoft Excel", pdfUrl: "https://drive.google.com/file/d/1RdApRFiEoUOcNd8rWwv9WLgypm3BV9mn/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1k1bbiwOgPpuv3wnM7cALVByxkyIJ_6Ql/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/17hSIbBhhl6jogoBS-Rsse6jxcXmjn4cK/view?usp=sharing" },
+          { id: 6, name: "Semester 6 - Microsoft PowerPoint", pdfUrl: "https://drive.google.com/file/d/1rJ7JAk75QmwJ10V5EgEiCKbbXoFJW9lJ/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1HIDczfEyzwgkoGGIqOoAg3TQowtcSrCx/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1sBhPe0rGfT-aU6hlqZZWHXdhslANyeor/view?usp=sharing" },
+          { id: 7, name: "Semester 7 - Microsoft Access", pdfUrl: "https://drive.google.com/file/d/1p0jjV-5E2Dg0vWeiK-62abpcmJe4Cm9Q/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/15CPamQUZs5f6X3nb1jfRJiNPqVSOXYsa/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1kAMKVHmCkmX378FIZ9KWHgzMDtptIDZr/view?usp=sharing" },
+          { id: 8, name: "Semester 8 - Adobe Photoshop", pdfUrl: "https://drive.google.com/file/d/1TalZc_PihHMXfTgjDLLwBsLIrCP8NIcj/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1HIiCnqD9JxrjNIDz-V1E6fLhAPh6b7FD/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1CLNstdXUOZR3IlklA27FQpvz_K5jLKIH/view?usp=sharing" },
+          { id: 9, name: "Semester 9 - CorelDRAW 2025", pdfUrl: "https://drive.google.com/file/d/1m8lt2Sf8EPZXgldPuNkhZStEmAc2PuQg/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1WJ-uZ9jeRauq90JYJeDBTQJuQNFR2QFE/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/15hMLDxEzVGfYzBteO7vb1CV57UkSxRzr/view?usp=sharing" },
+          { id: 10, name: "Semester 10 - Tally Prime 6.2", pdfUrl: "https://drive.google.com/file/d/1JlXbDfMBoh8ia-F-aqvIsphAlBBBq4c6/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1H8xXpFsOICVdAUHW2XpqpxmYONbYY6Qt/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1RKyM6qlhrsFVfJXbX32JdzqI22qVl0JZ/view?usp=sharing" },
+          { id: 11, name: "Semester 11 - Internet & Networking & Cybersecurity", pdfUrl: "https://drive.google.com/file/d/10vL_xYASjJerkrs-6dn4vLgz604e26AU/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1XUkTd5AyklCKgBIbi_jsbZBOk8XcwFJi/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1fZyDZnRLXP_Njh_t_Hu00uu0tzxbvWjH/view?usp=sharing" },
+          { id: 12, name: "Semester 12 - E‑Commerce & Social Media & Digital Marketing", pdfUrl: "https://drive.google.com/file/d/1s-kCEtguLRqOjwcR1pZfxVEWx_Pj_ojj/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1dch6bbCjTCIsxQa7bTBkHrj45SB_tFcL/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1Me1x0a9VXFyKhoxWW0GdTqa44DlWlKuK/view?usp=sharing" },
+          { id: 13, name: "Semester 13 - HTML", pdfUrl: "https://drive.google.com/file/d/1v24AUgod0JHNgCC4ANTpwYUVZnHC9Fug/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1OL9ZAnkyqbtJDBVIdXcuKL5gmXRaAjU_/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1x2FvHhXRzpjif65tKhUuKLqmKwSdSO9F/view?usp=sharing" },
+          { id: 14, name: "Semester 14 - Artificial Intelligence", pdfUrl: "https://drive.google.com/file/d/1pgnDf9XNkT2nfnHIcjW0AQ7IOLcsnCLY/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1UhbTdxPjTr3NIcCpGNzsRGtapIFKl_VK/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1x2FvHhXRzpjif65tKhUuKLqmKwSdSO9F/view?usp=sharing" }
+        ]
+      },
+      dca: {
+        name: "DCA", semesters: [
+          { id: 1, name: "Semester 1 - Fundamental of Computer", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1API0ApAQKrAz_aP56rEtTXE4TOe8Xobq/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1Mmr_KZHSf_kF70iQGISVFOI6l2XcdTu_/view?usp=sharing" },
+          { id: 2, name: "Semester 2 - Operating System", pdfUrl: "https://drive.google.com/file/d/1pdX-qOewiQQfWKo-zt5XivZ8yMepBYMd/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1DG0CkOKWbjs39WX5u1_EaxdZdisgXgs6/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1p-S9Zo0bxjQrxOgiZimLjwsDJd4T2tIA/view?usp=sharing" },
+          { id: 3, name: "Semester 3 - Microsoft Word", pdfUrl: "https://drive.google.com/file/d/1RMfdnGJAJpsuubtxq07WzBxeV7tcvJcX/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1H77yI1Z4lvTR2tMMK0A5VFZM8AKJmuc9/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1DWrvHkWm0Vyym0cI2j50p9KKVjc_TsVL/view?usp=sharing" },
+          { id: 4, name: "Semester 4 - Microsoft Excel", pdfUrl: "https://drive.google.com/file/d/1RdApRFiEoUOcNd8rWwv9WLgypm3BV9mn/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1k1bbiwOgPpuv3wnM7cALVByxkyIJ_6Ql/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/17hSIbBhhl6jogoBS-Rsse6jxcXmjn4cK/view?usp=sharing" },
+          { id: 5, name: "Semester 5 - Microsoft PowerPoint", pdfUrl: "https://drive.google.com/file/d/1rJ7JAk75QmwJ10V5EgEiCKbbXoFJW9lJ/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1HIDczfEyzwgkoGGIqOoAg3TQowtcSrCx/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1sBhPe0rGfT-aU6hlqZZWHXdhslANyeor/view?usp=sharing" },
+          { id: 6, name: "Semester 6 - Microsoft Access", pdfUrl: "https://drive.google.com/file/d/1p0jjV-5E2Dg0vWeiK-62abpcmJe4Cm9Q/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/15CPamQUZs5f6X3nb1jfRJiNPqVSOXYsa/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1kAMKVHmCkmX378FIZ9KWHgzMDtptIDZr/view?usp=sharing" },
+          { id: 7, name: "Semester 7 - Adobe Photoshop", pdfUrl: "https://drive.google.com/file/d/1TalZc_PihHMXfTgjDLLwBsLIrCP8NIcj/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1HIiCnqD9JxrjNIDz-V1E6fLhAPh6b7FD/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1CLNstdXUOZR3IlklA27FQpvz_K5jLKIH/view?usp=sharing" },
+          { id: 8, name: "Semester 8 - CorelDRAW 2025", pdfUrl: "https://drive.google.com/file/d/1m8lt2Sf8EPZXgldPuNkhZStEmAc2PuQg/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1WJ-uZ9jeRauq90JYJeDBTQJuQNFR2QFE/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/15hMLDxEzVGfYzBteO7vb1CV57UkSxRzr/view?usp=sharing" },
+          { id: 9, name: "Semester 9 - Tally Prime 6.2", pdfUrl: "https://drive.google.com/file/d/1JlXbDfMBoh8ia-F-aqvIsphAlBBBq4c6/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1H8xXpFsOICVdAUHW2XpqpxmYONbYY6Qt/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1RKyM6qlhrsFVfJXbX32JdzqI22qVl0JZ/view?usp=sharing" },
+          { id: 10, name: "Semester 10 - Internet & Networking & Cybersecurity", pdfUrl: "https://drive.google.com/file/d/10vL_xYASjJerkrs-6dn4vLgz604e26AU/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1XUkTd5AyklCKgBIbi_jsbZBOk8XcwFJi/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1fZyDZnRLXP_Njh_t_Hu00uu0tzxbvWjH/view?usp=sharing" },
+          { id: 11, name: "Semester 11 - Artificial Intelligence", pdfUrl: "https://drive.google.com/file/d/1pgnDf9XNkT2nfnHIcjW0AQ7IOLcsnCLY/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1UhbTdxPjTr3NIcCpGNzsRGtapIFKl_VK/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1x2FvHhXRzpjif65tKhUuKLqmKwSdSO9F/view?usp=sharing" }
+        ]
+      },
+      ccc: {
+        name: "CCC", semesters: [
+          { id: 1, name: "Semester 1 - Fundamental of Computer", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1API0ApAQKrAz_aP56rEtTXE4TOe8Xobq/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1Mmr_KZHSf_kF70iQGISVFOI6l2XcdTu_/view?usp=sharing" },
+          { id: 2, name: "Semester 2 - Operating System", pdfUrl: "https://drive.google.com/file/d/1pdX-qOewiQQfWKo-zt5XivZ8yMepBYMd/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1DG0CkOKWbjs39WX5u1_EaxdZdisgXgs6/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1p-S9Zo0bxjQrxOgiZimLjwsDJd4T2tIA/view?usp=sharing" },
+          { id: 3, name: "Semester 3 - Writer (Documents)", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" },
+          { id: 4, name: "Semester 4 - Calc (Spreadsheets)", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" },
+          { id: 5, name: "Semester 5 - Impress (Presentations)", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" },
+
+        ]
+      },
+      cfa: {
+        name: "CFA", semesters: [
+          { id: 1, name: "Semester 1 - Fundamental of Computer", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1API0ApAQKrAz_aP56rEtTXE4TOe8Xobq/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1Mmr_KZHSf_kF70iQGISVFOI6l2XcdTu_/view?usp=sharing" },
+          { id: 2, name: "Semester 2 - Operating System", pdfUrl: "https://drive.google.com/file/d/1pdX-qOewiQQfWKo-zt5XivZ8yMepBYMd/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1DG0CkOKWbjs39WX5u1_EaxdZdisgXgs6/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1p-S9Zo0bxjQrxOgiZimLjwsDJd4T2tIA/view?usp=sharing" },
+          { id: 3, name: "Semester 3 - Microsoft Word", pdfUrl: "https://drive.google.com/file/d/1RMfdnGJAJpsuubtxq07WzBxeV7tcvJcX/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1H77yI1Z4lvTR2tMMK0A5VFZM8AKJmuc9/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1DWrvHkWm0Vyym0cI2j50p9KKVjc_TsVL/view?usp=sharing" },
+          { id: 4, name: "Semester 4 - Microsoft Excel", pdfUrl: "https://drive.google.com/file/d/1RdApRFiEoUOcNd8rWwv9WLgypm3BV9mn/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1k1bbiwOgPpuv3wnM7cALVByxkyIJ_6Ql/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/17hSIbBhhl6jogoBS-Rsse6jxcXmjn4cK/view?usp=sharing" },
+          { id: 5, name: "Semester 5 - Microsoft PowerPoint", pdfUrl: "https://drive.google.com/file/d/1rJ7JAk75QmwJ10V5EgEiCKbbXoFJW9lJ/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1HIDczfEyzwgkoGGIqOoAg3TQowtcSrCx/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1sBhPe0rGfT-aU6hlqZZWHXdhslANyeor/view?usp=sharing" },
+          { id: 6, name: "Semester 6 - Tally Prime 6.2", pdfUrl: "https://drive.google.com/file/d/1JlXbDfMBoh8ia-F-aqvIsphAlBBBq4c6/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1H8xXpFsOICVdAUHW2XpqpxmYONbYY6Qt/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1RKyM6qlhrsFVfJXbX32JdzqI22qVl0JZ/view?usp=sharing" },
+          { id: 7, name: "Semester 7 - Artificial Intelligence", pdfUrl: "https://drive.google.com/file/d/1pgnDf9XNkT2nfnHIcjW0AQ7IOLcsnCLY/view?usp=sharing", audioUrl: "https://drive.google.com/file/d/1UhbTdxPjTr3NIcCpGNzsRGtapIFKl_VK/view?usp=sharing", videoUrl: "https://drive.google.com/file/d/1x2FvHhXRzpjif65tKhUuKLqmKwSdSO9F/view?usp=sharing" }
+        ]
+      },
+      python: {
+        name: "PYTHON", semesters: [
+          { id: 1, name: "Semester 1 - Python", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" }
+        ]
+      },
+      html: {
+        name: "HTML", semesters: [
+          { id: 1, name: "Semester 1 - HTML", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" }
+        ]
+      },
+      css: {
+        name: "CSS", semesters: [
+          { id: 1, name: "Semester 1 - CSS", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" }
+        ]
+      },
+      javascript: {
+        name: "JavaScript", semesters: [
+          { id: 1, name: "Semester 1 - JavaScript", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" }
+        ]
+      },
+      Web_Designing: {
+        name: "Web Designing", semesters: [
+          { id: 1, name: "Semester 1 - HTML", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" },
+          { id: 2, name: "Semester 2 - CSS", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" },
+          { id: 3, name: "Semester 3 - JavaScript", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" }
+        ]
+      },
+      Advanced_Excel: {
+        name: "Advanced Excel", semesters: [
+          { id: 1, name: "Semester 1 - Advanced Excel", pdfUrl: "https://drive.google.com/file/d/1u9VxAaR3D5dVTcBMV1kWt_HOOTZAFMLr/view?usp=sharing", audioUrl: "", videoUrl: "" }
+        ]
+      }
+    };
+    Object.keys(courses).forEach(k => { courseData[k] = courses[k].semesters; });
+
+    /* ======= Helpers ======= */
+    const GOOGLE_DRIVE_BASE = "https://drive.google.com/uc?export=view&id=";
+    function extractDriveId(urlOrId) {
+      if (!urlOrId) return null;
+      let m = urlOrId.match(/\/file\/d\/([^/]+)/); if (m) return m[1];
+      m = urlOrId.match(/[?&]id=([^&]+)/); if (m) return m[1];
+      if (!urlOrId.includes('/')) return urlOrId.trim();
+      return null;
+    }
+    function driveViewUrl(id) { return id ? `${GOOGLE_DRIVE_BASE}${id}` : null; }
+    function drivePreviewIframe(id) { return id ? `https://drive.google.com/file/d/${id}/preview` : null; }
+
+    /* ======= UI population ======= */
+    const courseSelect = document.getElementById('courseSelect');
+    const semesterList = document.getElementById('semesterList');
+    function populateCourses() {
+      courseSelect.innerHTML = '<option value="">Select a Course</option>';
+      const studentCoursesStr = localStorage.getItem('studentCourses');
+      const studentCourses = studentCoursesStr ? JSON.parse(studentCoursesStr) : [];
+      let keys = Object.keys(courseData);
+      if (studentCourses.length > 0) { keys = studentCourses.filter(c => courseData[c]); }
+      keys.forEach(c => {
+        const opt = document.createElement('option'); opt.value = c;
+        opt.textContent = c.toUpperCase(); courseSelect.appendChild(opt);
+      });
+    }
+    populateCourses();
+    courseSelect.addEventListener('change', () => populateSemesters(courseSelect.value));
+
+    let currentTab = 'pdf';
+    let currentSemester = null;
+
+    function setActiveTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+      document.getElementById('pdfContainer').style.display = (tab === 'pdf') ? 'flex' : 'none';
+      document.getElementById('audioContainer').style.display = (tab === 'audio') ? 'flex' : 'none';
+      document.getElementById('videoContainer').style.display = (tab === 'video') ? 'flex' : 'none';
+      // reload respective viewer if semester already selected
+      if (currentSemester) {
+        if (tab === 'pdf') loadPDF(currentSemester.pdfUrl);
+        if (tab === 'audio') loadAudio(currentSemester.audioUrl);
+        if (tab === 'video') loadVideo(currentSemester.videoUrl);
+      }
+    }
+    document.getElementById('viewerTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-btn'); if (!btn) return;
+      setActiveTab(btn.dataset.tab);
+    });
+
+    function populateSemesters(course) {
+      semesterList.innerHTML = '';
+      const semesters = courseData[course] || [];
+      if (semesters.length === 0) {
+        const li = document.createElement('li'); li.className = 'semester-item'; li.textContent = 'No semesters available'; semesterList.appendChild(li); return;
+      }
+      semesters.forEach(sem => {
+        const li = document.createElement('li'); li.className = 'semester-item'; li.innerHTML = `<span>${sem.name}</span>`;
+        li.addEventListener('click', () => {
+          document.querySelectorAll('.semester-item').forEach(x => x.classList.remove('active'));
+          li.classList.add('active'); currentSemester = sem;
+          // Load according to active tab
+          if (currentTab === 'pdf') loadPDF(sem.pdfUrl);
+          if (currentTab === 'audio') loadAudio(sem.audioUrl);
+          if (currentTab === 'video') loadVideo(sem.videoUrl);
+          // close mobile sidebar
+          if (window.innerWidth <= 1024) { sidebar.classList.remove('open'); overlay.classList.remove('active'); }
+        });
+        semesterList.appendChild(li);
+      });
+    }
+
+    /* ======= Loaders for viewers ======= */
+    const headerBar = document.getElementById('headerLoadingBar');
+
+    function showLoading(targetId, msg) {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      target.innerHTML = `<div class="loading"><div class="spinner"></div><div>${msg}</div></div>`;
+      headerBar.classList.add('loading');
+    }
+    function endLoading() { headerBar.classList.remove('loading'); }
+
+    function loadPDF(urlOrId) {
+      const viewer = document.getElementById('pdfViewer');
+      showLoading('pdfViewer', 'Loading PDF...');
+      const id = extractDriveId(urlOrId);
+      if (!id) { viewer.innerHTML = '<div class="loading"><div class="spinner"></div><div>No PDF assigned.</div></div>'; endLoading(); return; }
+      const src = `https://docs.google.com/viewer?url=${encodeURIComponent(driveViewUrl(id))}&embedded=true`;
+      const iframe = document.createElement('iframe');
+      iframe.src = src; iframe.width = '100%'; iframe.height = '100%'; iframe.style.border = 'none';
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+      iframe.addEventListener('load', () => { endLoading(); });
+      viewer.innerHTML = ''; viewer.appendChild(iframe);
+    }
+
+    function loadAudio(urlOrId) {
+      const viewer = document.getElementById('audioViewer');
+      showLoading('audioViewer', 'Loading audio...');
+      const id = extractDriveId(urlOrId);
+      if (!id) { viewer.innerHTML = '<div class="loading"><div class="spinner"></div><div>No audio added for this semester.</div></div>'; endLoading(); return; }
+      const src = drivePreviewIframe(id); // Google Drive preview player
+      const iframe = document.createElement('iframe');
+      iframe.src = src; iframe.width = '100%'; iframe.height = '100%'; iframe.style.border = 'none';
+      iframe.setAttribute('allow', 'autoplay');
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+      iframe.addEventListener('load', () => { endLoading(); });
+      viewer.innerHTML = ''; viewer.appendChild(iframe);
+    }
+
+    function loadVideo(urlOrId) {
+      const viewer = document.getElementById('videoViewer');
+      showLoading('videoViewer', 'Loading video...');
+      const id = extractDriveId(urlOrId);
+      if (!id) { viewer.innerHTML = '<div class="loading"><div class="spinner"></div><div>No video added for this semester.</div></div>'; endLoading(); return; }
+      const src = drivePreviewIframe(id); // Google Drive video preview
+      const iframe = document.createElement('iframe');
+      iframe.src = src; iframe.width = '100%'; iframe.height = '100%'; iframe.style.border = 'none';
+      iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+      iframe.addEventListener('load', () => { endLoading(); });
+      viewer.innerHTML = ''; viewer.appendChild(iframe);
+    }
+
+    /* Resize handling (kept for future pdf.js usage) */
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => { }, 250);
+    });
+
+    /* Splash hide after short delay */
+    document.addEventListener('DOMContentLoaded', () => {
+      const splash = document.getElementById('splashScreen');
+      setTimeout(() => { if (splash && splash.style.display !== 'none') { splash.style.display = 'none'; } }, 1200);
+    });
+  </script>
+</body>
+
+</html>
